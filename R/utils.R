@@ -375,9 +375,14 @@ hessian_dims <- function(dim) {
   rep(dim, 2)
 }
 
-# generate a random 8-digit hexadecimal string
-rhex <- function()
-  paste(as.raw(sample.int(256L, 4, TRUE) - 1L), collapse = "")
+# generate a unique name for each node.
+rhex <- function() {
+  count <- greta_stash$object_counter + 1L
+  greta_stash$object_counter <- count
+  count
+  # paste(as.raw(sample.int(256L, 4, TRUE) - 1L), collapse = "")
+}
+
 
 # stop TensorFlow messaging about deprecations etc.
 #' @importFrom reticulate py_set_attr import
