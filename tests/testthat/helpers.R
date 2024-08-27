@@ -607,11 +607,14 @@ skip_if_not_release <- function() {
   skip("Not a Release Candidate")
 }
 
-# run a geweke test on a greta model, providing: 'sampler' a greta sampler (e.g.
-# hmc()), a greta 'model', a 'data' greta array used as the target in the model,
-# the two IID random number generators for the data generating function
-# ('p_theta' = generator for the prior, 'p_x_bar_theta' = generator for the
-# likelihood), 'niter' the number of MCMC samples to compare
+# run a geweke test on a greta model, providing:
+# 'sampler' a greta sampler (e.g. hmc()),
+# 'model' a greta 'model'
+# 'data' greta array used as the target in the model
+# Two IID random number generators for the data generating function
+##### 'p_theta' = generator for the prior
+##### 'p_x_bar_theta' = generator for the likelihood
+# 'niter' the number of MCMC samples to compare
 check_geweke <- function(
   sampler,
   model,
@@ -648,9 +651,9 @@ check_geweke <- function(
   testthat::expect_gte(stat$p.value, 0.005)
 }
 
-# sample from a prior on theta the long way round, fro use in a Geweke test:
-# gibbs sampling the posterior p(theta | x) and the data generating function p(x
-# | theta). Only retain the samples of theta from the joint distribution,
+# sample from a prior on theta the long way round, for use in a Geweke test:
+# gibbs sampling the posterior p(theta | x) and the data generating function
+# p(x | theta). Only retain the samples of theta from the joint distribution,
 p_theta_greta <- function(
   niter,
   model,
@@ -676,18 +679,27 @@ p_theta_greta <- function(
 
   # now loop through, sampling and updating x and returning theta
   for (i in 2:niter) {
+    browser()
     # sample x given theta
     x <- p_x_bar_theta(theta[i - 1])
 
-    # put x in the data list
-    dag <- model$dag
-    target_name <- dag$tf_name(get_node(data))
-    x_array <- array(x, dim = c(1, dim(data)))
-    dag$tf_environment$data_list[[target_name]] <- x_array
+    # re-doing the model definition, this is not correct but contains the
+    # seed of the right idea
+    # define the greta model (single precision for slice sampler)
+    x <- as_data(rep(0, n))
+    greta_theta <- normal(mu1, sd1)
+    distribution(x) <- normal(greta_theta, sd2)
+    model <- model(greta_theta, precision = "single")
 
-    # put theta in the free state
-    sampler <- attr(draws, "model_info")$samplers[[1]]
-    sampler$free_state <- as.matrix(theta[i - 1])
+    # put x in the data list (removing this for now as its not working)
+    # dag <- model$dag
+    # target_name <- dag$tf_name(get_node(data))
+    # x_array <- array(x, dim = c(1, dim(data)))
+    # dag$tf_environment$data_list[[target_name]] <- x_array
+    #
+    # # put theta in the free state
+    # sampler <- attr(draws, "model_info")$samplers[[1]]
+    # sampler$free_state <- as.matrix(theta[i - 1])
 
     draws <- extra_samples(
       draws,
