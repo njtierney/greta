@@ -1,11 +1,21 @@
 # %*% errors informatively
 
-    incompatible dimensions: "3x4" vs "1x4"
+    Code
+      a %*% b
+    Condition
+      Error in `a %*% b`:
+      ! Incompatible dimensions: "3x4" vs "1x4"
 
 ---
 
-    only two-dimensional <greta_array>s can be matrix-multiplied
-    dimensions recorded were 3 and 4
+    Code
+      a %*% c
+    Condition
+      Error in `a %*% c`:
+      ! Only two-dimensional <greta_array>s can be matrix-multiplied
+      Dimensions for each are:
+      `x`: "3x4"
+      `y`: "2x2x2"
 
 # %*% works when one is a non-greta array
 
@@ -20,34 +30,43 @@
 
     Code
       x %*% as_data(y)
-    Output
-      greta array (operation)
+    Message
+      greta array <operation>
       
+    Output
            [,1]
       [1,]  ?  
       [2,]  ?  
+    Message
+      
 
 ---
 
     Code
       as_data(x) %*% y
-    Output
-      greta array (operation)
+    Message
+      greta array <operation>
       
+    Output
            [,1]
       [1,]  ?  
       [2,]  ?  
+    Message
+      
 
 ---
 
     Code
       as_data(x) %*% as_data(y)
-    Output
-      greta array (operation)
+    Message
+      greta array <operation>
       
+    Output
            [,1]
       [1,]  ?  
       [2,]  ?  
+    Message
+      
 
 ---
 

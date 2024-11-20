@@ -384,14 +384,14 @@ abind.greta_array <- function(...,
   arg_list <- list(...)
 
   # drop any NULLs
-  to_discard <- vapply(arg_list, is.null, FUN.VALUE = FALSE)
+  to_discard <- are_null(arg_list)
   if (any(to_discard)) {
     arg_list <- arg_list[!to_discard]
   }
 
   # get N first, in case they used the default value for along
   dims <- lapply(arg_list, dim)
-  n <- max(vapply(dims, length, FUN.VALUE = 1L))
+  n <- max(lengths(dims))
 
   # needed to keep the same formals as abind
   N <- n # nolint
@@ -405,6 +405,7 @@ abind.greta_array <- function(...,
     along <- max(1, min(n + 1, ceiling(along)))
   }
 
+  # TODO revisit checking functions here
   along_outside_0_n <- !(along %in% 0:n)
   if (along_outside_0_n) {
     cli::cli_abort(
@@ -469,17 +470,14 @@ c.greta_array <- function(...) {
   args <- list(...)
 
   # drop NULLs from the list
-  is_null <- vapply(args, is.null, FUN.VALUE = FALSE)
+  is_null <- are_null(args)
   args <- args[!is_null]
 
   # try to coerce to greta arrays
   args <- lapply(args, as.greta_array, optional = TRUE)
 
   # return a list if they aren't all greta arrays
-  is_greta_array <- vapply(args,
-    inherits, "greta_array",
-    FUN.VALUE = FALSE
-  )
+  is_greta_array <- are_greta_array(args)
 
   if (!all(is_greta_array)) {
     return(args)
@@ -489,7 +487,7 @@ c.greta_array <- function(...) {
   arrays <- lapply(args, flatten)
 
   # get output dimensions
-  length_vec <- vapply(arrays, length, FUN.VALUE = 1)
+  length_vec <- lengths(arrays)
   dim_out <- c(sum(length_vec), 1L)
 
   # create the op, expanding 'arrays' out to match op()'s dots input
@@ -533,6 +531,7 @@ length.greta_array <- function(x) {
 
   dims <- dims %||% length(x)
 
+  # TODO revisit logic / checking functions here
   if (length(dims) == 0L) {
     cli::cli_abort(
       "length-0 dimension vector is invalid"
@@ -652,7 +651,7 @@ diag.greta_array <- function(x = 1, nrow, ncol) {
   # check the rank isn't too high
   if (!is_2d(x)) {
     cli::cli_abort(
-      "cannot only extract the diagonal from a node with exactly two \\
+      "Cannot only extract the diagonal from a node with exactly two \\
       dimensions"
     )
   }
@@ -660,7 +659,7 @@ diag.greta_array <- function(x = 1, nrow, ncol) {
   is_square <- dim[1] != dim[2]
   if (is_square) {
     cli::cli_abort(
-      "diagonal elements can only be extracted from square matrices"
+      "Diagonal elements can only be extracted from square matrices"
     )
   }
 

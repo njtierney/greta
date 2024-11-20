@@ -4,7 +4,6 @@ new_install_process <- function(callr_process,
                                 stderr_file = NULL,
                                 cli_start_msg = NULL,
                                 cli_end_msg = NULL){
-  options(warning.length = 2000)
   cli::cli_process_start(cli_start_msg)
   # convert max timeout from milliseconds into minutes
   timeout_minutes <- timeout * 1000 * 60
@@ -21,16 +20,14 @@ new_install_process <- function(callr_process,
   if (is.null(status)) {
     cli::cli_process_failed()
     msg_timeout <- timeout_install_msg(timeout, output_error)
-    stop(
-      msg_timeout,
-      call. = FALSE
+    cli::cli_abort(
+      msg_timeout
     )
   } else if (no_output) {
     cli::cli_process_failed()
     msg_other <- other_install_fail_msg(output_error)
-    stop(
-      msg_other,
-      call. = FALSE
+    cli::cli_abort(
+      msg_other
     )
   }
 

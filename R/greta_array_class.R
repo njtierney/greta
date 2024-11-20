@@ -30,21 +30,7 @@ as.greta_array.logical <- function(x, optional = FALSE, original_x = x, ...) {
 #' @export
 as.greta_array.data.frame <- function(x, optional = FALSE,
                                       original_x = x, ...) {
-  classes <- vapply(x, class, "")
-  valid <- classes %in% c("numeric", "integer", "logical")
-
-  array_has_different_types <- !optional & !all(valid)
-  if (array_has_different_types) {
-    invalid_types <- unique(classes[!valid])
-    cli::cli_abort(
-      c(
-        "{.cls greta_array} must contain the same type",
-        "Cannot coerce a {.cls data.frame} to a {.cls greta_array} unless \\
-        all columns are {.cls numeric, integer} or {.cls logical}. This \\
-        dataframe had columns of type: {.cls {invalid_types}}"
-      )
-    )
-  }
+  check_greta_data_frame(x, optional)
 
   as.greta_array.numeric(as.matrix(x),
     optional = optional,
@@ -57,22 +43,12 @@ as.greta_array.data.frame <- function(x, optional = FALSE,
 # or numeric
 #' @export
 as.greta_array.matrix <- function(x, optional = FALSE, original_x = x, ...) {
-  ## TODO better abstract these if else clauses
-  if (!is.numeric(x)) {
-    if (is.logical(x)) {
+
+  check_greta_array_type(x, optional)
+
+  if (!is.numeric(x) && is.logical(x)) {
       x[] <- as.numeric(x[])
-    } else if (!optional) {
-      cli::cli_abort(
-        c(
-          "{.cls greta_array} must contain the same type",
-          "Cannot coerce {.cls matrix} to a {.cls greta_array} unless it is \\
-          {.cls numeric}, {.cls integer} or {.cls logical}. This \\
-          {.cls matrix} had type:",
-          "{.cls {class(as.vector(x))}}"
-        )
-      )
     }
-  }
 
   as.greta_array.numeric(x,
     optional = optional,
@@ -85,21 +61,11 @@ as.greta_array.matrix <- function(x, optional = FALSE, original_x = x, ...) {
 # or numeric
 #' @export
 as.greta_array.array <- function(x, optional = FALSE, original_x = x, ...) {
-  ## TODO Better abstract out these if statements
-  if (!optional & !is.numeric(x)) {
-    if (is.logical(x)) {
+
+  check_greta_array_type(x, optional)
+
+  if (!optional && !is.numeric(x) && is.logical(x)) {
       x[] <- as.numeric(x[])
-    } else {
-      cli::cli_abort(
-        c(
-          "{.cls greta_array} must contain the same type",
-          "Cannot coerce {.cls array} to a {.cls greta_array} unless it is \\
-          {.cls numeric}, {.cls integer} or {.cls logical}. This {.cls array} \\
-          had type:",
-          "{.cls {class(as.vector(x))}}"
-        )
-      )
-    }
   }
 
   as.greta_array.numeric(x,
@@ -112,12 +78,8 @@ as.greta_array.array <- function(x, optional = FALSE, original_x = x, ...) {
 # finally, reject if there are any missing values, or set up the greta_array
 #' @export
 as.greta_array.numeric <- function(x, optional = FALSE, original_x = x, ...) {
-  contains_missing_or_inf <- !optional & any(!is.finite(x))
-  if (contains_missing_or_inf) {
-    cli::cli_abort(
-        "{.cls greta_array} must not contain missing or infinite values"
-    )
-  }
+  check_missing_infinite_values(x, optional)
+
   as.greta_array.node(data_node$new(x),
     optional = optional,
     original_x = original_x,
@@ -153,15 +115,46 @@ as.greta_array.default <- function(x, optional = FALSE, original_x = x, ...) {
 
 # print method
 #' @export
-print.greta_array <- function(x, ...) {
+print.greta_array <- function(x, ..., n = 10) {
   node <- get_node(x)
-  text <- glue::glue(
-    "greta array ({node$description()})\n\n\n"
-  )
 
-  cat(text)
-  print(node$value(), ...)
+  node_desc <- node$cli_description()
+
+  cli::cli_text("{.pkg greta} array {.cls {node_desc}}")
+  cli::cli_text("\n")
+
+  if (is.unknowns(node$value())){
+    return(print(node$value(), ..., n = n))
+  }
+
+  x_val <- node$value()
+  n_print <- getOption("greta.print_max") %||% n
+
+  n_unknowns <- length(x_val)
+  x_head <- head(x_val, n = n_print)
+  remaining_vals <- n_unknowns - n_print
+
+  # print with question marks
+  print.default(x_head, quote = FALSE, max = n)
+
+  cli::cli_text("\n")
+
+  if (remaining_vals <= 0) {
+    return(invisible(x_val))
+  }
+
+  if (remaining_vals > 0 ) {
+    cli::cli_alert_info(
+      text = c(
+        "i" = "{remaining_vals} more values\n",
+        "i" = "Use {.code print(n = ...)} to see more values"
+      )
+    )
+  }
+
+
 }
+
 
 # summary method
 #' @export
@@ -255,17 +248,29 @@ representation <- function(x, name, error = TRUE) {
     x_node <- x
   }
   repr <- x_node$representations[[name]]
-  not_represented <- error && is.null(repr)
-  if (not_represented) {
-    cli::cli_abort(
-      "{.cls greta_array} has no representation {.var name}"
-    )
-  }
+  check_has_representation(repr, name, error)
   repr
 }
 
 has_representation <- function(x, name) {
   repr <- representation(x, name, error = FALSE)
+  !is.null(repr)
+}
+
+anti_representation <- function(x, name, error = TRUE) {
+  if (is.greta_array(x)) {
+    x_node <- get_node(x)
+  } else {
+    x_node <- x
+  }
+  repr <- x_node$anti_representations[[name]]
+  check_has_anti_representation(repr, name, error)
+  repr
+}
+
+
+has_anti_representation <- function(x, name){
+  repr <- anti_representation(x, name, error = FALSE)
   !is.null(repr)
 }
 
