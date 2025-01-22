@@ -25,8 +25,7 @@ greta_conflicts <- function(only = NULL) {
   conflicts <- purrr::keep(objs, ~ length(.x) > 1)
 
   tidy_names <- paste0("package:", greta_packages())
-  conflicts <- purrr::keep(conflicts, ~ any(.x %in% tidy_names))
-
+  conflicts <- purrr::keep(conflicts, function(pkg) any(pkg %in% tidy_names))
   conflict_funs <- purrr::imap(conflicts, confirm_conflict)
   conflict_funs <- purrr::compact(conflict_funs)
 
@@ -73,9 +72,9 @@ print.greta_conflicts <- function(x, ..., startup = FALSE) {
 
 confirm_conflict <- function(packages, name) {
   # Only look at functions
-  objs <- packages |>
-    purrr::map(~ get(name, pos = packages)) |>
-    purrr::keep(is.function)
+  objs_funs <- purrr::map(.x = packages,
+                     .f = function(pkgs) get(name, pos = pkgs))
+    objs <- purrr::keep(.x = objs_funs, .p = is.function)
 
   if (length(objs) <= 1)
     return()
